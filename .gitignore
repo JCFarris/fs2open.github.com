@@ -42,6 +42,10 @@ _ReSharper*/
 
 #Project files
 [Bb]uild/
+# Named out-of-source build directories (for example, build-vs2026)
+/[Bb]uild-*/
+/[Bb]uild_*/
+/cmake-build-*/
 [Oo]ut/
 
 #Subversion files
@@ -251,7 +255,8 @@ documentation/doxygen/*
 projects/*
 /.vs
 CMakeSettings.json
-CMakePresets.json
+# Shared CMakePresets.json is project configuration; only user presets are local.
+CMakeUserPresets.json
 
 # Weird files created by Linux
 .fuse_hidden*
@@ -260,8 +265,41 @@ CMakePresets.json
 !/code/scripting/lua/LuaConvert.h
 !/code/debugconsole/
 !/docker/build
-CMakeFiles/cmake.check_cache
+# CMake-generated files (adapted from github/gitignore's CMake template)
+CMakeFiles/
+CMakeScripts/
 CMakeCache.txt
+CMakeLists.txt.user
+cmake_install.cmake
+install_manifest*.txt
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+_deps/
+build.ninja
+rules.ninja
+.ninja_deps
+.ninja_log
+CPackConfig.cmake
+CPackSourceConfig.cmake
+_CPack_Packages/
+
+# Additional C/C++ compiler, linker, and coverage intermediates
+*.o
+*.lo
+*.slo
+*.gch
+*.pdb
+*.idb
+*.iobj
+*.ipdb
+*.tlog
+*.binlog
+*.gcda
+*.gcno
+*.gcov
+*.profraw
+*.profdata
 
 # Written by the unittests binary at runtime
 test/test_data/**/*_settings.ini

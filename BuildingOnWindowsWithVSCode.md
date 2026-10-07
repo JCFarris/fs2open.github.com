@@ -1,0 +1,155 @@
+# Build and run FreeSpace Open on Windows with VS Code
+
+These instructions apply to the checkout at `C:\dev\fs2open`. The example game-content directory is `C:\Games\FreeSpace2`; substitute your actual directory wherever that path appears.
+
+This workspace uses `C:\dev\fs2-content`, containing the nine retail VP archives and ten cutscenes copied from the Steam installation. Use `C:/dev/fs2-content` for both CMake content/install paths when following the commands below on this machine.
+
+## 1. Install the build tools
+
+VS Code can configure, build, and debug this CMake project. It requires a separate C++ compiler and build tools.
+
+Install:
+
+- **Visual Studio 2022 or 2026 Build Tools**, with the **Desktop development with C++** workload, the x64/x86 compiler tools, and a Windows SDK. VS 2022 uses the v143 toolset; VS 2026 defaults to v145.
+- **C++ ATL for the selected MSVC x86/x64 toolset**, available under **Individual components** in Visual Studio Installer. The default speech and voice-recognition features require ATL. Install the component matching the compiler used by the build: v143 for VS 2022, or v145 for the default VS 2026 toolset. ATL installed only for an older toolset does not satisfy the newer compiler's dependency.
+- **CMake**, available on PATH: **3.21 or newer for VS 2022**, or **4.2 or newer for the VS 2026 generator**. This checkout's top-level `CMakeLists.txt` sets the project minimum at 3.21; the older minimum in the project wiki is outdated.
+- **Git for Windows**.
+- **Visual Studio Code**, with Microsoft's **C/C++** and **CMake Tools** extensions.
+
+The full Visual Studio IDE is optional. If Visual Studio 2022 or 2026 is already installed with the C++ workload, its build tools can be used.
+
+VS 2026 should work, but this checkout's CI configurations use VS 2022/v143, and a VS 2026 build has not been verified locally. Microsoft maintains binary compatibility between v145 and earlier MSVC toolsets, which helps with prebuilt dependencies but does not guarantee that all source code compiles unchanged.
+
+Restart VS Code after installing tools so it picks up PATH changes. Open `C:\dev\fs2open` as the workspace folder.
+
+## 2. Prepare the game content
+
+The source repository contains the engine, not the retail game assets. To play the original FreeSpace 2 campaign, install your retail, GOG, or Steam copy of FreeSpace 2.
+
+Use its installation directory as the game-content directory, or copy the complete installation content into a writable directory such as `C:\Games\FreeSpace2`. Preserve the retail `.vp` archives and any loose data and movie files. Do not extract the `.vp` archives.
+
+An illustrative directory layout is:
+
+```text
+C:\Games\FreeSpace2\
+    root_fs2.vp
+    other retail .vp archives
+    data\
+```
+
+Keep the game content separate from the source checkout. Start with the base retail content for the first compiled run.
+
+[Knossos.NET](https://knossoslauncher.com/) can manage graphics upgrades and mods. Most mods require FreeSpace 2, while some standalone total conversions provide their own content. When using mods, follow their dependency and launch requirements; installing an executable alone does not select or install a mod.
+
+## 3. Initialize the source dependencies
+
+Run in VS Code's PowerShell terminal:
+
+```powershell
+cd C:\dev\fs2open
+git submodule update --init --recursive
+```
+
+This fetches the Git submodules required by the build. Configuration and dependency setup may also require an internet connection.
+
+## 4. Configure, build, and install
+
+The following commands use the Visual Studio 2022 generator and build a 64-bit game executable. They disable the FRED2 and QtFRED mission editors to simplify the initial setup.
+
+```powershell
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
+  -DFSO_BUILD_FRED2=OFF `
+  -DFSO_BUILD_QTFRED=OFF `
+  -DCMAKE_INSTALL_PREFIX="C:/Games/FreeSpace2" `
+  -DFSO_FREESPACE_PATH="C:/Games/FreeSpace2"
+
+cmake --build build --config Release --parallel
+cmake --install build --config Release
+```
+
+For **Visual Studio 2026**, use CMake 4.2 or newer and a separate build directory:
+
+```powershell
+cmake -S . -B build-vs2026 -G "Visual Studio 18 2026" -A x64 `
+  -DFSO_BUILD_FRED2=OFF `
+  -DFSO_BUILD_QTFRED=OFF `
+  -DCMAKE_INSTALL_PREFIX="C:/Games/FreeSpace2" `
+  -DFSO_FREESPACE_PATH="C:/Games/FreeSpace2"
+
+cmake --build build-vs2026 --config Release --parallel
+cmake --install build-vs2026 --config Release
+```
+
+The VS 2026 generator selects the v145 toolset by default. Do not reuse a build directory configured for VS 2022 with the VS 2026 generator.
+
+Run these commands from `C:\dev\fs2open`. Use forward slashes in the CMake path arguments, as shown.
+
+- `build` holds generated build files and compiled outputs. An out-of-source build is required.
+- `CMAKE_INSTALL_PREFIX` determines where installation copies the executable and runtime files.
+- `FSO_FREESPACE_PATH` sets the game-content working directory for the launch helpers generated by this project. VS Code debugger configuration may require its own working-directory setting.
+- `Release` is appropriate for playing. `Debug` is intended for debugging engine code; `FastDebug` enables data checks with optimizations.
+
+The install step copies runtime files as well as the executable. Run it after rebuilding when you want to play using the installed executable. It may replace files from a previous engine installation in that directory.
+
+If a build directory was previously configured with another generator or architecture, use a new build directory, such as `build-vs2022-x64`, consistently in all three commands.
+
+## 5. Run the game
+
+Open `C:\Games\FreeSpace2` and run the newly installed `fs2_open_*.exe`. The exact filename depends on the engine version and build options.
+
+For the initial retail run, no mod selection is necessary. Create a pilot and start the campaign once the game opens.
+
+## 6. Build through the VS Code interface
+
+The terminal commands above work inside VS Code without further editor configuration. To use the CMake Tools interface instead:
+
+1. Open the Command Palette and run **CMake: Select a Kit**.
+2. Select the Visual Studio/MSVC kit for **x64**.
+3. Configure an out-of-source build with the same cache variables used above: disable `FSO_BUILD_FRED2` and `FSO_BUILD_QTFRED`, and set both content paths.
+4. Select the **Release** configuration.
+5. Build the **Freespace2** target, or the default build target.
+6. Install the build into the game-content directory before running the installed executable.
+
+Avoid switching generators within the same build directory. For debugging, build `Debug`, select the game executable, and set the debugger's working directory to the game-content folder.
+
+## Troubleshooting
+
+### CMake is not recognized
+
+Ensure CMake is installed and on PATH, restart VS Code, and check:
+
+```powershell
+cmake --version
+```
+
+### Microsoft compiler or generator cannot be found
+
+Verify that your selected Visual Studio Build Tools version has the C++ workload and Windows SDK installed. For VS 2026, also verify that `cmake --version` reports 4.2 or newer; older CMake versions do not provide the `Visual Studio 18 2026` generator. For the Visual Studio generator, `cl.exe` need not be on an ordinary PowerShell terminal's PATH: CMake normally discovers the installed toolchain. You can also open VS Code from a Visual Studio Developer PowerShell session.
+
+### Git reports missing basename, sed, or git-sh-setup
+
+During the initial inspection of this workspace, `git submodule status` failed because Git could not find its helper utilities. If this also affects submodule initialization, try the command in Git Bash or repair the Git for Windows installation. These are Git installation/environment errors.
+
+### CMake reports missing external submodules
+
+Run `git submodule update --init --recursive` successfully, then configure again.
+
+### Compilation reports missing atlbase.h
+
+If Windows SDK `sphelper.h` reports that it cannot find `atlbase.h` while compiling `speech_win.cpp` or `voicerec.cpp`, modify your Build Tools installation in Visual Studio Installer. Under **Individual components**, install **C++ ATL for the matching MSVC x86/x64 tools**. Check the toolset/version selected by the generated build: installing v143 ATL alone does not provide ATL for a v145 build. Retry the build after installation; do not mix headers or libraries from different toolsets manually.
+
+If you do not want text-to-speech or voice recognition, you can instead configure with both `-DFSO_USE_SPEECH=OFF` and `-DFSO_USE_VOICEREC=OFF`. This is an optional feature choice, not a requirement for all builds.
+
+### The game reports missing content or cannot start
+
+Verify that the content folder contains the complete retail data and that the newly built executable and installed runtime files are in that folder. Check that you used the same game-content path throughout configuration and installation.
+
+## References
+
+- [Project Windows build guide](https://github.com/scp-fs2open/fs2open.github.com/wiki/Building-on-Windows)
+- [VS Code CMake Tools guide](https://code.visualstudio.com/docs/cpp/cmake-linux) — the CMake workflow also applies to Windows, with Windows compiler prerequisites.
+- [Knossos.NET downloads](https://knossoslauncher.com/)
+- [CMake Visual Studio 18 2026 generator](https://cmake.org/cmake/help/latest/generator/Visual%20Studio%2018%202026.html) — added in CMake 4.2; defaults to v145.
+- [Microsoft C++ binary compatibility](https://learn.microsoft.com/en-us/cpp/porting/binary-compat-2015-2017?view=msvc-160)
+
+On October 7, 2026, the VS 2026 Release build succeeded with speech and voice recognition enabled after installing matching ATL. The executable and runtime DLLs were installed into `C:\dev\fs2-content`, and the installed executable's SHA-256 matched the build output. The user confirmed that the build works.
